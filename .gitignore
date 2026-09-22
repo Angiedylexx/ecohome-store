@@ -1,0 +1,31 @@
+# Dependencias
+node_modules/
+
+# Secretos (solo se versiona .env.example)
+.env
+.env.local
+
+# Documentación, reportes y evidencias (fuera del repo de código)
+*.md
+*.pdf
+*.docx
+evidencias/
+NO_CARGA/
+capturas/
+
+# Build / cachés
+build/
+dist/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.metadata
+android/local.properties
+ios/Pods/
+*.iml
+.idea/
+
+# Sistema
+.DS_Store
+Thumbs.db
