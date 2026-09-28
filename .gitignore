@@ -5,14 +5,6 @@ node_modules/
 .env
 .env.local
 
-# Documentación, reportes y evidencias (fuera del repo de código)
-*.md
-*.pdf
-*.docx
-evidencias/
-NO_CARGA/
-capturas/
-
 # Build / cachés
 build/
 dist/
@@ -29,3 +21,13 @@ ios/Pods/
 # Sistema
 .DS_Store
 Thumbs.db
+
+# Material del curso: solo local, no forma parte del repositorio
+/unidad_0*/
+/lecturas/
+/capturas/
+/prompt-*.md
+*.pdf
+*.docx
+evidencias/
+NO_CARGA/
