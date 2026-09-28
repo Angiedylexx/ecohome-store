@@ -5,9 +5,9 @@ import '../navigation.dart';
 import '../session.dart';
 import 'chat_screen.dart';
 
-/// Catálogo: `GET /products` (DataTable con columna "Creado por"), contador
+/// Catálogo: `GET /products` (tarjetas con nombre, precio y "Creado por"), contador
 /// "Nombre (N)" desde `GET /users/me/stats` y alta de productos (`POST /products`,
-/// solo rol admin) tras la cual tabla y contador se actualizan al instante.
+/// cualquier usuario autenticado) tras la cual tabla y contador se actualizan al instante.
 class ProductsScreen extends StatefulWidget {
   const ProductsScreen({super.key, required this.session});
 
@@ -129,9 +129,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
           child: Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: Text(
-              session.isAdmin
-                  ? 'Catálogo · rol admin'
-                  : 'Catálogo · rol ${session.role} (solo lectura)',
+              'Catálogo · rol ${session.role}',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           ),
@@ -163,27 +161,28 @@ class _ProductsScreenState extends State<ProductsScreen> {
           }
           return RefreshIndicator(
             onRefresh: _refreshAll,
-            child: _ProductsTable(
+            child: _ProductsList(
               products: products,
               currentUser: session.username,
             ),
           );
         },
       ),
-      // Solo el rol admin puede crear productos (403 para los demás).
-      floatingActionButton: session.isAdmin
-          ? FloatingActionButton.extended(
-              onPressed: _addProduct,
-              icon: const Icon(Icons.add),
-              label: const Text('Nuevo producto'),
-            )
-          : null,
+      // Cualquier usuario autenticado puede crear productos: el creador queda
+      // registrado con su id y el contador "Nombre (N)" sube.
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _addProduct,
+        icon: const Icon(Icons.add),
+        label: const Text('Nuevo producto'),
+      ),
     );
   }
 }
 
-class _ProductsTable extends StatelessWidget {
-  const _ProductsTable({required this.products, required this.currentUser});
+/// Lista de tarjetas (cabe en cualquier ancho de teléfono): nombre, precio y
+/// creador de cada producto. El creador propio se resalta.
+class _ProductsList extends StatelessWidget {
+  const _ProductsList({required this.products, required this.currentUser});
 
   final List<Product> products;
   final String currentUser;
@@ -191,48 +190,66 @@ class _ProductsTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
 
-    return LayoutBuilder(
-      builder: (context, constraints) => SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        // Espacio inferior para que el botón flotante no tape la última fila.
-        padding: const EdgeInsets.only(bottom: 88),
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minWidth: constraints.maxWidth),
-            child: DataTable(
-              columnSpacing: 20,
-              columns: const [
-                DataColumn(label: Text('ID'), numeric: true),
-                DataColumn(label: Text('Producto')),
-                DataColumn(label: Text('Precio'), numeric: true),
-                DataColumn(label: Text('Creado por')),
-              ],
-              rows: [
-                for (final p in products)
-                  DataRow(cells: [
-                    DataCell(Text('${p.id}')),
-                    DataCell(Text(p.name)),
-                    DataCell(Text(_formatPrice(p.price))),
-                    DataCell(
-                      p.creatorUsername == null
-                          ? const Text('—')
-                          : Text(
-                              p.creatorUsername!,
-                              style: p.creatorUsername == currentUser
-                                  ? TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: scheme.primary)
-                                  : null,
+    return ListView.separated(
+      physics: const AlwaysScrollableScrollPhysics(),
+      // Espacio inferior para que el botón flotante no tape la última tarjeta.
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 88),
+      itemCount: products.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      itemBuilder: (context, i) {
+        final p = products[i];
+        final creator = p.creatorUsername;
+        final isOwn = creator != null && creator == currentUser;
+
+        return Card(
+          margin: EdgeInsets.zero,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(p.name, style: textTheme.titleMedium),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.person_outline,
+                              size: 16,
+                              color: isOwn ? scheme.primary : scheme.outline),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              creator == null
+                                  ? 'Creado por: —'
+                                  : 'Creado por: $creator${isOwn ? ' (tú)' : ''}',
+                              overflow: TextOverflow.ellipsis,
+                              style: textTheme.bodySmall?.copyWith(
+                                color: isOwn ? scheme.primary : null,
+                                fontWeight:
+                                    isOwn ? FontWeight.bold : FontWeight.normal,
+                              ),
                             ),
-                    ),
-                  ]),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  _formatPrice(p.price),
+                  style: textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                ),
               ],
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

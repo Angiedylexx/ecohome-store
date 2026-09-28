@@ -27,11 +27,13 @@ function StatCard({ icon, label, value, tone }) {
 }
 
 // Catálogo: tarjetas de resumen, búsqueda/filtros y tabla con columna "Creado por".
-// Crear, editar y borrar (solo admin) refrescan la tabla y avisan a App
+// Crear (cualquier usuario), editar y borrar (su creador o un admin) refrescan la tabla y avisan a App
 // (onProductsChanged) para actualizar el contador "Nombre (N)" sin recargar.
 export default function Catalog({ user, token, productCount, onProductsChanged, onAuthError }) {
   const toast = useToast();
   const isAdmin = user.role === "admin";
+  // Editar/eliminar: el creador del producto o un admin (el backend lo vuelve a comprobar).
+  const canModify = (p) => isAdmin || (p.creator != null && p.creator.id === user.id);
 
   const [products, setProducts] = useState([]);
   const [status, setStatus] = useState("loading"); // "loading" | "ready" | "error"
@@ -140,11 +142,9 @@ export default function Catalog({ user, token, productCount, onProductsChanged, 
           <h1 id="catalog-title">Catálogo</h1>
           <p className="muted">Productos ecológicos y quién los registró.</p>
         </div>
-        {isAdmin && (
-          <button type="button" className="btn primary" onClick={() => setEditing("new")}>
-            <Icon name="plus" size={18} /> Nuevo producto
-          </button>
-        )}
+        <button type="button" className="btn primary" onClick={() => setEditing("new")}>
+          <Icon name="plus" size={18} /> Nuevo producto
+        </button>
       </div>
 
       <div className="stats">
@@ -156,7 +156,7 @@ export default function Catalog({ user, token, productCount, onProductsChanged, 
       {!isAdmin && (
         <p className="notice">
           <Icon name="info" size={16} />
-          Tu rol es «{user.role}»: puedes consultar el catálogo y usar el chat. Solo un administrador crea, edita o elimina productos.
+          Puedes crear productos y editar o eliminar los tuyos. Cada producto que crees suma a tu contador.
         </p>
       )}
 
@@ -205,7 +205,7 @@ export default function Catalog({ user, token, productCount, onProductsChanged, 
                 <th className="num">Precio</th>
                 <th>Creado por</th>
                 <th>Fecha</th>
-                {isAdmin && <th className="actions-col"><span className="sr-only">Acciones</span></th>}
+                <th className="actions-col"><span className="sr-only">Acciones</span></th>
               </tr>
             </thead>
             <tbody>
@@ -216,7 +216,7 @@ export default function Catalog({ user, token, productCount, onProductsChanged, 
                     <td className="num"><span className="skeleton w-40" /></td>
                     <td><span className="skeleton w-50" /></td>
                     <td><span className="skeleton w-40" /></td>
-                    {isAdmin && <td />}
+                    <td />
                   </tr>
                 ))}
 
@@ -240,16 +240,18 @@ export default function Catalog({ user, token, productCount, onProductsChanged, 
                       )}
                     </td>
                     <td data-label="Fecha" className="muted">{formatDate(p.created_at)}</td>
-                    {isAdmin && (
-                      <td className="actions-col">
+                    <td className="actions-col">
+                      {canModify(p) && (
+                        <>
                         <button type="button" className="icon-btn" onClick={() => setEditing(p)} aria-label={`Editar ${p.name}`} title="Editar">
                           <Icon name="pencil" size={17} />
                         </button>
                         <button type="button" className="icon-btn danger" onClick={() => setDeleting(p)} aria-label={`Eliminar ${p.name}`} title="Eliminar">
                           <Icon name="trash" size={17} />
                         </button>
-                      </td>
-                    )}
+                        </>
+                      )}
+                    </td>
                   </tr>
                 ))}
             </tbody>
@@ -267,7 +269,7 @@ export default function Catalog({ user, token, productCount, onProductsChanged, 
               ) : (
                 <>
                   <strong>El catálogo está vacío</strong>
-                  <p className="muted">{isAdmin ? "Crea el primer producto para empezar." : "Aún no hay productos registrados."}</p>
+                  <p className="muted">Crea el primer producto para empezar.</p>
                 </>
               )}
             </div>

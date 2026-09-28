@@ -5,8 +5,8 @@ import { decodeJwt } from "../jwt";
 import Icon from "./Icon";
 
 const DEMO_ACCOUNTS = [
-  { label: "Admin", identifier: "admin", password: "Admin123!", hint: "crea y edita productos" },
-  { label: "Cliente", identifier: "cliente", password: "Cliente123!", hint: "consulta y chatea" },
+  { label: "Admin", identifier: "admin", password: "Admin123!", hint: "gestiona todo el catálogo" },
+  { label: "Cliente", identifier: "cliente", password: "Cliente123!", hint: "crea y gestiona lo suyo" },
 ];
 
 const FEATURES = [

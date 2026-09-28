@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const ProductController = require('../controllers/product.controller');
-const { authJWT, authorizeRole } = require('../middlewares/auth.middleware');
+const { authJWT } = require('../middlewares/auth.middleware');
+const canModifyProduct = require('../middlewares/productOwnership');
 const validateProduct = require('../middlewares/validateProduct');
 
 const router = Router();
@@ -16,14 +17,15 @@ router.param('id', (req, res, next, id) => {
 // Todo el catálogo requiere JWT (la web y la app móvil ya inician sesión antes).
 router.use('/products', authJWT);
 
-// Lectura: cualquier usuario autenticado.
+// Leer y crear: cualquier usuario autenticado. El creador queda registrado
+// con el id del token (trazabilidad) y alimenta el contador "Nombre (N)".
 router.get('/products', ProductController.getAllProducts);
 router.get('/products/:id', ProductController.getProductById);
+router.post('/products', validateProduct, ProductController.createProduct);
 
-// Escritura: rol 'admin' y cuerpo válido (name no vacío, price > 0).
-router.post('/products', authorizeRole('admin'), validateProduct, ProductController.createProduct);
-router.put('/products/:id', authorizeRole('admin'), validateProduct, ProductController.updateProduct);
-router.patch('/products/:id', authorizeRole('admin'), validateProduct, ProductController.updateProduct);
-router.delete('/products/:id', authorizeRole('admin'), ProductController.deleteProduct);
+// Editar y eliminar: el creador del producto o un admin.
+router.put('/products/:id', validateProduct, canModifyProduct, ProductController.updateProduct);
+router.patch('/products/:id', validateProduct, canModifyProduct, ProductController.updateProduct);
+router.delete('/products/:id', canModifyProduct, ProductController.deleteProduct);
 
 module.exports = router;

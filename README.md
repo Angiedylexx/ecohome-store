@@ -18,14 +18,15 @@ servidor de chat y el mismo token JWT, sin duplicar lógica.
 |---|---|---|---|
 | Login / registro con JWT | `POST /auth/login`, `POST /auth/signup` | ✔ | ✔ |
 | Catálogo con creador (`creator.username`) | `GET /products` | ✔ tabla, búsqueda, filtros, orden | ✔ tabla |
-| CRUD de productos (rol `admin`) | `POST/PUT/DELETE /products` | ✔ crear, editar y eliminar | ✔ crear |
+| CRUD de productos | `POST/PUT/DELETE /products` | ✔ crear, editar y eliminar | ✔ crear |
 | Indicador `Nombre (N)` | `GET /users/me/stats`, `GET /users/me` | ✔ cabecera | ✔ barra de título |
 | Chat en tiempo real (últimos 10 mensajes al entrar) | Socket.IO | ✔ panel lateral | ✔ pantalla |
 
 **Seguridad:** contraseñas con bcrypt (costo 10), todas las rutas REST de catálogo y usuario protegidas con
 middleware JWT, y el handshake de Socket.IO valida el mismo JWT. El creador de un producto y el autor de un
 mensaje **siempre salen del token**, nunca del cuerpo de la petición. El registro público crea únicamente
-usuarios con rol `cliente`: las cuentas `admin` se crean en la base de datos.
+usuarios con rol `cliente`: las cuentas `admin` se crean en la base de datos. Cualquier usuario autenticado crea productos;
+editar o eliminar un producto solo lo puede su creador o un `admin`.
 
 ## Requisitos
 
@@ -66,7 +67,7 @@ base a mano. Si vienes de una versión anterior, `init.sql` migra `messages` (`t
 | `messages` | `id`, `user_id` → `users.id`, `content`, `created_at` |
 
 `email` y `role` amplían el modelo mínimo (`id, username, password_hash, created_at`): el login es por correo y solo
-el rol `admin` escribe en el catálogo.
+el rol `admin` puede editar y eliminar cualquier producto.
 
 ## 2. Backend
 
@@ -125,8 +126,8 @@ Creadas por `db/init.sql`. El login acepta correo **o** nombre de usuario.
 
 | Rol | Usuario | Correo | Contraseña | Puede |
 |---|---|---|---|---|
-| `admin` | `admin` | `admin@ecohome.com` | `Admin123!` | Ver, crear, editar y eliminar productos; chat |
-| `cliente` | `cliente` | `cliente@ecohome.com` | `Cliente123!` | Ver el catálogo; chat |
+| `admin` | `admin` | `admin@ecohome.com` | `Admin123!` | Crear productos; editar y eliminar cualquiera; chat |
+| `cliente` | `cliente` | `cliente@ecohome.com` | `Cliente123!` | Crear productos; editar y eliminar los suyos; chat |
 
 ## API REST
 
@@ -139,9 +140,9 @@ Las rutas protegidas exigen `Authorization: Bearer <token>`: sin token → `401`
 | `POST /auth/login` | — | `{ email \| username, password }` → `{ token }` (JWT de 1 h con `{ id, username, role }`) |
 | `GET /products` | JWT | `[ { id, name, price, created_by, created_at, updated_at, creator: { id, username } \| null } ]` |
 | `GET /products/:id` | JWT | Un producto (misma forma) o `404` |
-| `POST /products` | JWT + `admin` | `{ name, price }` → `201`. `created_by` = usuario del token (se ignora si viene en el cuerpo) |
-| `PUT /products/:id` | JWT + `admin` | `{ name, price }` → producto actualizado (el creador no cambia) |
-| `DELETE /products/:id` | JWT + `admin` | `{ message, product }` |
+| `POST /products` | JWT | `{ name, price }` → `201`. `created_by` = usuario del token (se ignora si viene en el cuerpo) |
+| `PUT /products/:id` | JWT + creador o `admin` | `{ name, price }` → producto actualizado (el creador no cambia). `403` si el producto es de otro usuario |
+| `DELETE /products/:id` | JWT + creador o `admin` | `{ message, product }` |
 | `GET /users/me` | JWT | `{ id, username, email, role, created_at, productCount }` |
 | `GET /users/me/stats` | JWT | `{ username, count }` (productos creados por el usuario autenticado) |
 
@@ -164,6 +165,7 @@ Cada mensaje se guarda en `messages` antes de reenviarse; `user_id` y `username`
 ## Notas de diseño
 
 - **Un solo backend:** el chat y el catálogo comparten servidor, base de datos, tabla `users` y JWT.
-- **Solo `admin` escribe en el catálogo** (`403` para `cliente`). Por eso el contador `Nombre (N)` de un `cliente` es `0`.
+- **Permisos del catálogo:** cualquier usuario autenticado crea productos (y su contador `Nombre (N)` sube); editar o eliminar
+  requiere ser el creador del producto o `admin` (`403` en otro caso). Los productos sin creador solo los modifica un `admin`.
 - **Sesión:** web y móvil guardan el JWT en el dispositivo (`localStorage` / `shared_preferences`) y cierran la
   sesión al vencer el token.
